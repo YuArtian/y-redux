@@ -2,41 +2,64 @@
 import isPlainObject from './utils/isPlainObject'
 import ActionTypes from './utils/actionTypes'
 
-const createStore = function(reducer, preloadedState){
-  if (typeof reducer !== 'function') {
-    throw new Error('reducer 必须是函数')
+export default function createStore(reducer, preloadedState, enhancer){
+  if (
+    (typeof preloadedState === 'function' && typeof enhancer === 'function') ||
+    (typeof enhancer === 'function' && typeof arguments[3] === 'function')
+  ) {
+    throw new Error('不要传多个enhancer, 使用compose组合')
   }
-  let currentReducer = reducer
+  if (typeof preloadedState === 'function' && typeof enhancer === 'undefined') {
+    enhancer = preloadedState
+    preloadedState = undefined
+  }
+  if (typeof reducer !== 'function') {
+    throw new Error('reducer必须是函数')
+  }
+  if (typeof enhancer !== 'undefined') {
+    if (typeof enhancer !== 'function') {
+      throw new Error('enhancer必须是函数')
+    }
+    return enhancer(createStore)(reducer, preloadedState)
+  }
+  let currenrReducer = reducer
   let currentState = preloadedState
-  let listenerQueue = []
   let isDispatching = false
+  let listenerQueue = []
 
   function getState(){
     if (isDispatching) {
-      throw new Error('error! is dipatching')
+      throw new Error('正在dispatch,不能获取state')
     }
     return currentState
   }
 
+  function replaceReducer(nextReducer){
+    if (typeof nextReducer !== 'function') {
+      throw new Error('reducer必须是函数')
+    }
+    currenrReducer = nextReducer
+    dispatch({type: ActionTypes.REPLACE})
+  }
+
   function dispatch(action){
-    if (isPlainObject(!action)) {
-      throw new Error('action 必须是一个简单对象')
+    if (!isPlainObject(action)) {
+      throw new Error('action 必须是简单对象')
     }
     if (typeof action.type === 'undefined') {
-      throw new Error('action 中必须要有type属性')
+      throw new Error('action 必须有type属性')
     }
     if (isDispatching) {
-      throw new Error('Reducers 正在进行dispatch')
+      throw new Error('reducer 正在dispatch')
     }
     try {
       isDispatching = true
-      currentState = currentReducer(currentState, action)
+      currentState = currenrReducer(currentState, action)
     } finally {
       isDispatching = false
     }
-    const listeners = listenerQueue
-    for(let i = 0; i<listeners.length; i++){
-      let listener = listeners[i]
+    for(let i=0; i<listenerQueue.length; i++){
+      const listener = listenerQueue[i]
       listener()
     }
     return action
@@ -44,41 +67,29 @@ const createStore = function(reducer, preloadedState){
 
   function subscribe(listener){
     if (typeof listener !== 'function') {
-      throw new Error('listener 必须是一个函数')
+      throw new Error('listener 必须是函数')
     }
-    if (isDispatching) {
-      throw new Error('Reducers 正在 dispatching')
-    }
-    let isSubscribed = true
+    let isSubed = true
     listenerQueue.push(listener)
-    return function unsubscribe() {
-      if (!isSubscribed) {
+    return function unsubscribe(){
+      if (!isSubed) {
         return
       }
       if (isDispatching) {
-        throw new Error('不能在dispatching中解绑')
+        throw new Error('正在dispatch不能解除监听')
       }
-      isSubscribed = false
+      isSubed = false
       const index = listenerQueue.indexOf(listener)
       listenerQueue.splice(index, 1)
     }
   }
 
-  function replaceReducer(nextReducer){
-    if (typeof nextReducer !== 'function') {
-      throw new Error('nextReducer必须是函数')
-    }
-    currentReducer = nextReducer
-    dispatch({ type: ActionTypes.REPLACE })
-  }
+  dispatch({type: ActionTypes.INIT})
 
-  dispatch({ type: ActionTypes.INIT })
   return {
     getState,
     dispatch,
     subscribe,
-    replaceReducer,
+    replaceReducer
   }
 }
-
-export default createStore
