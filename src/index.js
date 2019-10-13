@@ -21,7 +21,6 @@ const reducer = function(state=defaultState, action){
   }
 }
 const store = createStore(reducer)
-console.log('store.getState()',store.getState())
 const render = () => {
   ReactDOM.render(
     <Counter

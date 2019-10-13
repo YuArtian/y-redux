@@ -3,6 +3,9 @@ import isPlainObject from './utils/isPlainObject'
 import ActionTypes from './utils/actionTypes'
 
 const createStore = function(reducer, preloadedState){
+  if (typeof reducer !== 'function') {
+    throw new Error('reducer 必须是函数')
+  }
   let currentReducer = reducer
   let currentState = preloadedState
   let listenerQueue = []
