@@ -6,8 +6,8 @@ import './index.css';
 import Counter from './App';
 import * as serviceWorker from './serviceWorker';
 
-const defaultState = 0
-const reducer = function(state=defaultState, action){
+//reducers
+const reducer = function(state=0, action){
   switch(action.type){
     case 'INCREMENT': {
       console.log('INCREMENT');
